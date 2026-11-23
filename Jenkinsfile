@@ -166,6 +166,7 @@ stage('Push Images to ECR') {
         }
 
         
+
 stage('Push GitOps Changes') {
     steps {
         withCredentials([usernamePassword(
@@ -191,21 +192,17 @@ stage('Push GitOps Changes') {
     }
 }
 
-    post {
-        always {
-            sh '''
-                docker image prune -f || true
-            '''
-        }
-
-        success {
-            echo "NutriFlow pipeline completed successfully."
-            echo "Argo CD will sync the updated Kubernetes manifests."
-        }
-
-        failure {
-            echo "NutriFlow pipeline failed. Check the stage logs."
-        }
+post {
+    success {
+        echo 'NutriFlow pipeline completed successfully!'
     }
+    failure {
+        echo 'NutriFlow pipeline failed. Check the stage logs.'
+    }
+    always {
+        sh 'docker image prune -f'
+    }
+}
+
 }
 
