@@ -169,7 +169,7 @@ stage('Push Images to ECR') {
 stage('Push GitOps Changes') {
     steps {
         withCredentials([usernamePassword(
-            credentialsId: 'github-token',
+            credentialsId: 'github',
             usernameVariable: 'GIT_USERNAME',
             passwordVariable: 'GIT_TOKEN'
         )]) {
