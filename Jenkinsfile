@@ -8,8 +8,6 @@ pipeline {
 
     environment {
         AWS_REGION = 'ap-south-1'
-
-        // Set this to your AWS account ID
         AWS_ACCOUNT_ID = '994878981749'
 
         ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -51,22 +49,23 @@ pipeline {
         }
 
         stage('SonarQube Analysis') {
-    steps {
-        script {
-            def scannerHome = tool 'SonarScanner'
+            steps {
+                script {
+                    def scannerHome = tool 'SonarScanner'
 
-            withSonarQubeEnv('sonarqube') {
-                sh """
-                    '${scannerHome}/bin/sonar-scanner' \
-                    -Dsonar.projectKey=nutriflow \
-                    -Dsonar.projectName=NutriFlow \
-                    -Dsonar.sources=backend,frontend/src \
-                    -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/coverage/**
-                """
+                    withSonarQubeEnv('sonarqube') {
+                        sh """
+                            '${scannerHome}/bin/sonar-scanner' \
+                            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                            -Dsonar.projectName=NutriFlow \
+                            -Dsonar.sources=backend,frontend/src \
+                            -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/coverage/**
+                        """
+                    }
+                }
             }
         }
-    }
-}
+
         stage('Quality Gate') {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
@@ -111,47 +110,43 @@ pipeline {
             }
         }
 
-        
-stage('Login to ECR') {
-    steps {
-        withCredentials([usernamePassword(
-            credentialsId: 'aws-ecr-credentials',
-            usernameVariable: 'AWS_ACCESS_KEY_ID',
-            passwordVariable: 'AWS_SECRET_ACCESS_KEY'
-        )]) {
-            sh '''
-                export AWS_DEFAULT_REGION=ap-south-1
+        stage('Login to ECR') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'aws-ecr-credentials',
+                    usernameVariable: 'AWS_ACCESS_KEY_ID',
+                    passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                )]) {
+                    sh '''
+                        export AWS_DEFAULT_REGION=ap-south-1
 
-                aws ecr get-login-password --region $AWS_DEFAULT_REGION |
-                docker login --username AWS --password-stdin \
-                994878981749.dkr.ecr.ap-south-1.amazonaws.com
-            '''
+                        aws ecr get-login-password --region $AWS_DEFAULT_REGION |
+                        docker login --username AWS --password-stdin \
+                        994878981749.dkr.ecr.ap-south-1.amazonaws.com
+                    '''
+                }
+            }
         }
-    }
-}
 
+        stage('Push Images to ECR') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'aws-ecr-credentials',
+                    usernameVariable: 'AWS_ACCESS_KEY_ID',
+                    passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                )]) {
+                    sh '''
+                        export AWS_DEFAULT_REGION=ap-south-1
 
-        
-stage('Push Images to ECR') {
-    steps {
-        withCredentials([usernamePassword(
-            credentialsId: 'aws-ecr-credentials',
-            usernameVariable: 'AWS_ACCESS_KEY_ID',
-            passwordVariable: 'AWS_SECRET_ACCESS_KEY'
-        )]) {
-            sh '''
-                export AWS_DEFAULT_REGION=ap-south-1
+                        docker push ${ECR_REGISTRY}/${BACKEND_IMAGE}:${IMAGE_TAG}
+                        docker push ${ECR_REGISTRY}/${BACKEND_IMAGE}:latest
 
-                docker push 994878981749.dkr.ecr.ap-south-1.amazonaws.com/nutriflow-backend:$IMAGE_TAG
-                docker push 994878981749.dkr.ecr.ap-south-1.amazonaws.com/nutriflow-backend:latest
-
-                docker push 994878981749.dkr.ecr.ap-south-1.amazonaws.com/nutriflow-frontend:$IMAGE_TAG
-                docker push 994878981749.dkr.ecr.ap-south-1.amazonaws.com/nutriflow-frontend:latest
-            '''
+                        docker push ${ECR_REGISTRY}/${FRONTEND_IMAGE}:${IMAGE_TAG}
+                        docker push ${ECR_REGISTRY}/${FRONTEND_IMAGE}:latest
+                    '''
+                }
+            }
         }
-    }
-}
-
 
         stage('Update Kubernetes Manifests') {
             steps {
@@ -165,44 +160,43 @@ stage('Push Images to ECR') {
             }
         }
 
-        
+        stage('Push GitOps Changes') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'github',
+                    usernameVariable: 'GIT_USERNAME',
+                    passwordVariable: 'GIT_TOKEN'
+                )]) {
+                    sh '''
+                        git config user.name "Jenkins"
+                        git config user.email "jenkins@example.com"
 
-stage('Push GitOps Changes') {
-    steps {
-        withCredentials([usernamePassword(
-            credentialsId: 'github',
-            usernameVariable: 'GIT_USERNAME',
-            passwordVariable: 'GIT_TOKEN'
-        )]) {
-            sh '''
-                git config user.name "Jenkins"
-                git config user.email "jenkins@example.com"
+                        git add k8s/
 
-                git add k8s/
+                        if ! git diff --cached --quiet; then
+                            git commit -m "Update NutriFlow images to ${IMAGE_TAG}"
 
-                if ! git diff --cached --quiet; then
-                    git commit -m "Update NutriFlow images to ${IMAGE_TAG}"
-
-                    git push https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/jijojohn911/nutriflow.git HEAD:main
-                else
-                    echo "No Kubernetes manifest changes to push."
-                fi
-            '''
+                            git push https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/jijojohn911/nutriflow.git HEAD:main
+                        else
+                            echo "No Kubernetes manifest changes to push."
+                        fi
+                    '''
+                }
+            }
         }
     }
-}
 
-post {
-    success {
-        echo 'NutriFlow pipeline completed successfully!'
-    }
-    failure {
-        echo 'NutriFlow pipeline failed. Check the stage logs.'
-    }
-    always {
-        sh 'docker image prune -f'
-    }
-}
+    post {
+        success {
+            echo 'NutriFlow pipeline completed successfully!'
+        }
 
-}
+        failure {
+            echo 'NutriFlow pipeline failed. Check the stage logs.'
+        }
+
+        always {
+            sh 'docker image prune -f'
+        }
+    }
 }
