@@ -131,17 +131,27 @@ stage('Login to ECR') {
 }
 
 
-        stage('Push Images to ECR') {
-            steps {
-                sh '''
-                    docker push ${ECR_REGISTRY}/${BACKEND_IMAGE}:${IMAGE_TAG}
-                    docker push ${ECR_REGISTRY}/${BACKEND_IMAGE}:latest
+        
+stage('Push Images to ECR') {
+    steps {
+        withCredentials([usernamePassword(
+            credentialsId: 'aws-ecr-credentials',
+            usernameVariable: 'AWS_ACCESS_KEY_ID',
+            passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+        )]) {
+            sh '''
+                export AWS_DEFAULT_REGION=ap-south-1
 
-                    docker push ${ECR_REGISTRY}/${FRONTEND_IMAGE}:${IMAGE_TAG}
-                    docker push ${ECR_REGISTRY}/${FRONTEND_IMAGE}:latest
-                '''
-            }
+                docker push 994878981749.dkr.ecr.ap-south-1.amazonaws.com/nutriflow-backend:$IMAGE_TAG
+                docker push 994878981749.dkr.ecr.ap-south-1.amazonaws.com/nutriflow-backend:latest
+
+                docker push 994878981749.dkr.ecr.ap-south-1.amazonaws.com/nutriflow-frontend:$IMAGE_TAG
+                docker push 994878981749.dkr.ecr.ap-south-1.amazonaws.com/nutriflow-frontend:latest
+            '''
         }
+    }
+}
+
 
         stage('Update Kubernetes Manifests') {
             steps {
