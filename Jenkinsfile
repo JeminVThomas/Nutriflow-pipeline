@@ -176,7 +176,7 @@ pipeline {
                         if ! git diff --cached --quiet; then
                             git commit -m "Update NutriFlow images to ${IMAGE_TAG}"
 
-                            git push https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/JeminVThomas/nutriflow.git HEAD:main
+                            git push https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/JeminVThomas/Nutriflow-pipeline.git HEAD:main
                         else
                             echo "No Kubernetes manifest changes to push."
                         fi
