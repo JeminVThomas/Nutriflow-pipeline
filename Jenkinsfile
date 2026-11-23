@@ -51,20 +51,22 @@ pipeline {
         }
 
         stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv('sonarqube') {
-                    sh '''
-                        sonar-scanner \
-                          -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                          -Dsonar.projectName=NutriFlow \
-                          -Dsonar.sources=backend,frontend/src \
-                          -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/coverage/** \
-                          -Dsonar.host.url=${SONAR_HOST_URL}
-                    '''
-                }
+    steps {
+        script {
+            def scannerHome = tool 'SonarScanner'
+
+            withSonarQubeEnv('sonarqube') {
+                sh """
+                    '${scannerHome}/bin/sonar-scanner' \
+                    -Dsonar.projectKey=nutriflow \
+                    -Dsonar.projectName=NutriFlow \
+                    -Dsonar.sources=backend,frontend/src \
+                    -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/coverage/**
+                """
             }
         }
-
+    }
+}
         stage('Quality Gate') {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
