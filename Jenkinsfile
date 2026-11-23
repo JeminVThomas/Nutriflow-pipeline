@@ -165,33 +165,31 @@ stage('Push Images to ECR') {
             }
         }
 
-        stage('Push GitOps Changes') {
-            steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'github',
-                        usernameVariable: 'GIT_USERNAME',
-                        passwordVariable: 'GIT_TOKEN'
-                    )
-                ]) {
-                    sh '''
-                        git config user.name "Jenkins"
-                        git config user.email "jenkins@example.com"
+        
+stage('Push GitOps Changes') {
+    steps {
+        withCredentials([usernamePassword(
+            credentialsId: 'github-token',
+            usernameVariable: 'GIT_USERNAME',
+            passwordVariable: 'GIT_TOKEN'
+        )]) {
+            sh '''
+                git config user.name "Jenkins"
+                git config user.email "jenkins@example.com"
 
-                        git add k8s/
+                git add k8s/
 
-                        if git diff --cached --quiet; then
-                            echo "No Kubernetes manifest changes"
-                        else
-                            git commit -m "Update NutriFlow images to ${IMAGE_TAG}"
+                if ! git diff --cached --quiet; then
+                    git commit -m "Update NutriFlow images to ${IMAGE_TAG}"
 
-                            git push https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/jijojohn911/nutriflow.git HEAD:main
-                        fi
-                    '''
-                }
-            }
+                    git push https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/jijojohn911/nutriflow.git HEAD:main
+                else
+                    echo "No Kubernetes manifest changes to push."
+                fi
+            '''
         }
     }
+}
 
     post {
         always {
