@@ -1,0 +1,22 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nutriflow-frontend
+  namespace: nutriflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nutriflow-frontend
+  template:
+    metadata:
+      labels:
+        app: nutriflow-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: 994878981749.dkr.ecr.ap-south-1.amazonaws.com/nutriflow-frontend:initial
+          ports:
+            - containerPort: 80
+

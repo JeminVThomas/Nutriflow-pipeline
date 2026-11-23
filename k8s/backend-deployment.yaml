@@ -1,0 +1,27 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nutriflow-backend
+  namespace: nutriflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nutriflow-backend
+  template:
+    metadata:
+      labels:
+        app: nutriflow-backend
+    spec:
+      containers:
+        - name: backend
+          image: 994878981749.dkr.ecr.ap-south-1.amazonaws.com/nutriflow-backend:initial
+          ports:
+            - containerPort: 5000
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: PORT
+              value: "5000"
+
