@@ -168,8 +168,8 @@ pipeline {
                     passwordVariable: 'GIT_TOKEN'
                 )]) {
                     sh '''
-                        git config user.name "Jenkins"
-                        git config user.email "jenkins@example.com"
+                        git config user.name "Jenkins-Jemin"
+                        git config user.email "jeminthomas2004@gmail"
 
                         git add k8s/
 
